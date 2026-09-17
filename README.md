@@ -11,7 +11,7 @@ let
     #"Encabezados promovidos" = Table.PromoteHeaders(Origen, [PromoteAllScalars=true]),
     #"Tipo cambiado con configuración regional" = Table.TransformColumnTypes(#"Encabezados promovidos", {{"InvoiceDate", type datetime}}, "en-US"),
     #"Tipo cambiado" = Table.TransformColumnTypes(#"Tipo cambiado con configuración regional",{{"InvoiceDate", type date}, {"Quantity", Int64.Type}}),
-    // Filtrar las ventas para conservar únicamente registros con cantidad mayor que cero.
+    // Filtrar las ventas para conservar únicamente registros con cantidad mayor que cero. Paso renombrado.
     #"Filtrar a cantidad positiva"  = Table.SelectRows(#"Tipo cambiado", each [Quantity] > 0),
     #"Columnas con nombre cambiado" = Table.RenameColumns(#"Filtrar a cantidad positiva",{{"CustomerID", "id_cliente"}, {"Country", "pais"}, {"InvoiceDate", "fecha_venta"}, {"Quantity", "cantidad"}, {"Description", "descripcion"}, {"InvoiceNo", "id_venta"}, {"UnitPrice", "precio_unitario"}, {"StockCode", "id_producto"}})
 in
