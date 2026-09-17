@@ -1,42 +1,88 @@
-# Práctica: Lenguaje M - Explorando el Editor Avanzado de Power Query
+# README
 
-## Código M
+## 1. ¿Qué hace exactamente el bloque `let...in` en lenguaje M? ¿Por qué cada paso puede referenciar al anterior?
 
-A continuación se presenta el código final generado en el Editor Avanzado de Power Query, incluyendo la modificación manual realizada sobre uno de los pasos y el comentario agregado mediante `//`.
+El bloque `let...in` permite organizar una consulta de Power Query en diferentes pasos. Dentro de `let` se definen los pasos o variables que contienen cada transformación que se realiza sobre los datos. Finalmente, `in` indica cuál de esos pasos será el resultado que se devuelve.
+Cada paso puede utilizar el resultado del paso anterior porque los pasos están definidos de manera secuencial y pueden referenciar el nombre de una transformación anterior. Por ejemplo, en esta práctica `EstandarizarCategoria` utiliza como entrada `LimpiarNombresProducto`, que es el paso anterior:
 
-### Código completo
+```m
+EstandarizarCategoria = Table.TransformColumns(
+    LimpiarNombresProducto,
+    {{"categoria", Text.Proper, type text}}
+),
+```
 
-let
-    Origen = Csv.Document(File.Contents("I:\Mi unidad\Varios\Curso Data Analytics\Módulo 6\Practica M\data.csv"),[Delimiter=",", Columns=8, Encoding=1252, QuoteStyle=QuoteStyle.None]),
-    #"Encabezados promovidos" = Table.PromoteHeaders(Origen, [PromoteAllScalars=true]),
-    #"Tipo cambiado con configuración regional" = Table.TransformColumnTypes(#"Encabezados promovidos", {{"InvoiceDate", type datetime}}, "en-US"),
-    #"Tipo cambiado" = Table.TransformColumnTypes(#"Tipo cambiado con configuración regional",{{"InvoiceDate", type date}, {"Quantity", Int64.Type}}),
-    // Filtrar las ventas para conservar únicamente registros con cantidad mayor que cero. Paso renombrado.
-    #"Filtrar a cantidad positiva"  = Table.SelectRows(#"Tipo cambiado", each [Quantity] > 0),
-    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Filtrar a cantidad positiva",{{"CustomerID", "id_cliente"}, {"Country", "pais"}, {"InvoiceDate", "fecha_venta"}, {"Quantity", "cantidad"}, {"Description", "descripcion"}, {"InvoiceNo", "id_venta"}, {"UnitPrice", "precio_unitario"}, {"StockCode", "id_producto"}})
-in
-    #"Columnas con nombre cambiado"
+Esto permite construir el proceso de transformación de manera ordenada, haciendo que cada modificación se aplique sobre los datos que resultaron del paso anterior.
 
 ---
 
-## Explicación
+## 2. ¿Por qué M es Case Sensitive y qué consecuencia práctica tiene? Da un ejemplo de un error que esto puede causar.
 
-### 1. ¿Por qué es útil para un analista de datos entender la estructura `let ... in`?
+M es Case Sensitive porque diferencia entre letras mayúsculas y minúsculas. Esto significa que los nombres de las funciones, pasos y referencias deben escribirse respetando exactamente su forma.
+Por ejemplo, `Table.SelectRows` es una función válida, mientras que escribirla como:
 
-Considero que es útil porque permite entender qué está haciendo Power Query con los datos en cada paso. Aunque muchas transformaciones se pueden hacer desde los botones de la interfaz, estas acciones se convierten en código M y quedan organizadas dentro de la estructura `let ... in`.
-Entender esta estructura permite revisar el código, saber de dónde sale cada transformación y hacer modificaciones directamente en el Editor Avanzado cuando sea necesario. También ayuda a identificar en qué paso puede estar un error, ya que cada transformación depende del resultado de la anterior.
+```m
+table.selectrows
+```
 
-### 2. ¿Qué significa que el lenguaje M sea Case Sensitive y cuál es la consecuencia práctica de ignorarlo?
+puede generar un error porque M diferencia las mayúsculas de las minúsculas.
+En la práctica, esto significa que al modificar código directamente en el Editor Avanzado hay que tener cuidado con la escritura exacta de las funciones y de los nombres de los pasos. Un error de mayúsculas o minúsculas puede hacer que la consulta no se ejecute correctamente.
 
-Que M sea **Case Sensitive** significa que diferencia entre mayúsculas y minúsculas. Por ejemplo, `Table.SelectRows` y `table.selectrows` no se consideran la misma función.
+---
 
-Esto es importante cuando se modifica el código manualmente, porque escribir una función, un paso o una referencia con una mayúscula o minúscula incorrecta puede generar un error y hacer que la consulta no funcione. Por eso, al trabajar en el Editor Avanzado hay que tener cuidado con la forma exacta en que están escritos los nombres.
+## 3. ¿Cuál es la diferencia entre usar `Text.Trim` y `Text.Clean` en M?
 
-### 3. ¿Por qué elegiste ese dataset y qué criterios usaste para seleccionarlo?
+`Text.Trim` se utiliza para eliminar espacios u otros caracteres especificados que se encuentran al inicio y al final de un texto. En esta práctica lo utilicé para limpiar la columna `nombre_producto`, eliminando los espacios innecesarios que estaban en los extremos de los nombres.
+Por ejemplo:
 
-Elegí el dataset "E-Commerce Analysis - UK" porque está relacionado con ventas de comercio electrónico y tiene información variada que permite practicar diferentes transformaciones en Power Query.
-Para seleccionarlo tuve en cuenta principalmente los criterios de la actividad: que fuera un dataset disponible públicamente, que tuviera más de cinco columnas y que manejara diferentes tipos de datos, como fechas, números y texto. También me interesaba que tuviera datos que permitieran identificar situaciones como valores faltantes y otros aspectos que pudieran ser revisados durante el proceso de transformación.
-Además, me pareció apropiado para la práctica porque permite ver claramente la relación entre las transformaciones que se realizan desde la interfaz de Power Query y el código M que se genera automáticamente.
+```m
+Text.Trim(" Laptop ")
+```
 
-**Fuente del dataset:**  
-https://www.kaggle.com/datasets/atharvaarya25/e-commerce-analysis-uk
+produce:
+
+```text
+Laptop
+```
+
+Por otro lado, `Text.Clean` tiene como finalidad eliminar caracteres de control que pueden encontrarse dentro de un texto, como algunos caracteres no imprimibles.
+
+Por lo tanto, ambas funciones sirven para limpiar texto, pero tienen objetivos diferentes: `Text.Trim` se enfoca principalmente en los caracteres que están en los extremos del texto, mientras que `Text.Clean` elimina caracteres de control no imprimibles.
+
+---
+
+## 4. ¿Por qué filtraste los registros "PRUEBA" después de estandarizar la categoría y no antes?
+
+Filtré los registros después de estandarizar la categoría porque `Text.Proper` modifica la forma en que está escrito el texto.
+Por ejemplo, una categoría escrita como:
+
+```text
+PRUEBA
+```
+
+después de aplicar `Text.Proper` queda como:
+
+```text
+Prueba
+```
+
+Por esta razón, primero apliqué:
+
+```m
+EstandarizarCategoria = Table.TransformColumns(
+    LimpiarNombresProducto,
+    {{"categoria", Text.Proper, type text}}
+),
+```
+
+y después realicé el filtro:
+
+```m
+FiltrarRegistrosPrueba = Table.SelectRows(
+    EstandarizarCategoria,
+    each [categoria] <> "Prueba"
+),
+```
+
+De esta manera, el filtro se realiza sobre una categoría que ya tiene un formato estandarizado. Si hubiera filtrado antes, tendría que considerar las diferentes formas en que podría estar escrita la palabra, como `PRUEBA`, `Prueba` o `prueba`.
+Esto también permite evitar problemas relacionados con la sensibilidad a mayúsculas y minúsculas del lenguaje M.
